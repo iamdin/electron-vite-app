@@ -1,0 +1,36 @@
+appId: com.electron.app.dev
+productName: electron-vite-app-dev
+directories:
+  buildResources: build
+  output: dist/dev
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+# Disable asar for faster builds and easier debugging
+asar: false
+# Disable compression for faster builds
+compression: store
+mac:
+  identity: null
+  notarize: false
+  target:
+    - target: dir
+      arch:
+        - arm64
+        - x64
+win:
+  executableName: electron-vite-app-dev
+  target:
+    - target: dir
+linux:
+  target:
+    - target: dir
+npmRebuild: false
+# Disable publishing for dev builds
+publish: null
