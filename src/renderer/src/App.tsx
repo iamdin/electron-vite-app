@@ -23,7 +23,7 @@ function App(): React.JSX.Element {
         </div>
         <div className="action">
           <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
+            Send IPC 12
           </a>
         </div>
       </div>
