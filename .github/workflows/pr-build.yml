@@ -63,39 +63,22 @@ jobs:
           path: dist/dev/mac*
           retention-days: 7
 
-  # comment:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     pull-requests: write
-  #   steps:
-  #     - name: Post PR comment with artifact links
-  #       uses: actions/github-script@v7
-  #       with:
-  #         script: |
-  #           const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-  #           const body = `## 🎉 Build Artifacts Ready\n\n| Platform | Download |\n|----------|----------|\n| macOS arm64 | [electron-app-mac-arm64](${runUrl}#artifacts) |\n| macOS x64 | [electron-app-mac-x64](${runUrl}#artifacts) |\n\n> Artifacts expire in 7 days`;
-  #           
-  #           const { data: comments } = await github.rest.issues.listComments({
-  #             owner: context.repo.owner,
-  #             repo: context.repo.repo,
-  #             issue_number: context.issue.number,
-  #           });
-  #           
-  #           const botComment = comments.find(c => c.body.includes('Build Artifacts Ready'));
-  #           
-  #           if (botComment) {
-  #             await github.rest.issues.updateComment({
-  #               owner: context.repo.owner,
-  #               repo: context.repo.repo,
-  #               comment_id: botComment.id,
-  #               body
-  #             });
-  #           } else {
-  #             await github.rest.issues.createComment({
-  #               owner: context.repo.owner,
-  #               repo: context.repo.repo,
-  #               issue_number: context.issue.number,
-  #               body
-  #             });
-  #           }
+  comment:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post PR comment with artifact links
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const body = `## 🎉 Build Artifacts Ready\n\n| Platform | Download |\n|----------|----------|\n| macOS arm64 | [electron-app-mac-arm64](${runUrl}#artifacts) |\n| macOS x64 | [electron-app-mac-x64](${runUrl}#artifacts) |\n\n> Artifacts expire in 7 days`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
