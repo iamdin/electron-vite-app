@@ -17,7 +17,6 @@ asar: false
 # Disable compression for faster builds
 compression: store
 mac:
-  identity: null
   notarize: false
   target:
     - target: dir
