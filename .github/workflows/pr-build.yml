@@ -28,23 +28,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Setup npm cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          node-version: 24
 
       - name: Install dependencies
         run: npm install
 
       - name: Build Electron app
-        run: |
-          npm run build
-          npx electron-builder --config electron-builder.dev.yml --${{ matrix.arch }}
+        run: npm run build:dev -- --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -52,14 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: electron-app-mac-${{ matrix.arch }}-app
-          path: dist/dev/mac-${{ matrix.arch }}/electron-vite-app.app
-          retention-days: 7
-
-      - name: Upload dmg artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: electron-app-mac-${{ matrix.arch }}-dmg
-          path: dist/dev/*-${{ matrix.arch }}.dmg
+          path: dist/dev/mac-${{ matrix.arch }}/electron-vite-app-dev.app
           retention-days: 7
 
   comment:
@@ -85,9 +68,7 @@ jobs:
             const byName = new Map(data.artifacts.map((artifact) => [artifact.name, artifact]));
             const rows = [
               ["macOS arm64", "app", "electron-app-mac-arm64-app"],
-              ["macOS arm64", "dmg", "electron-app-mac-arm64-dmg"],
               ["macOS x64", "app", "electron-app-mac-x64-app"],
-              ["macOS x64", "dmg", "electron-app-mac-x64-dmg"],
             ].map(([platform, kind, name]) => {
               const artifact = byName.get(name);
               const url = artifact
@@ -96,11 +77,29 @@ jobs:
               return `| ${platform} | ${kind} | [${name}](${url}) |`;
             });
 
-            const body = `## 🎉 Build Artifacts Ready\n\n| Platform | Type | Download |\n|----------|------|----------|\n${rows.join("\n")}\n\n> Artifacts expire in 7 days`;
+            const marker = "## 🎉 Build Artifacts Ready";
+            const body = `${marker}\n\n| Platform | Type | Download |\n|----------|------|----------|\n${rows.join("\n")}\n\n> Artifacts expire in 7 days`;
 
-            await github.rest.issues.createComment({
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body
             });
+
+            const existing = comments.find((comment) => comment.body?.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
