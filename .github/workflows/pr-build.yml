@@ -30,37 +30,36 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
+      - name: Setup npm cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm install
 
       - name: Build Electron app
-        run: pnpm build:dev
+        run: |
+          npm run build
+          npx electron-builder --config electron-builder.dev.yml --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
+      - name: Upload app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: electron-app-mac-${{ matrix.arch }}
-          path: dist/dev/mac*
+          name: electron-app-mac-${{ matrix.arch }}-app
+          path: dist/dev/mac-${{ matrix.arch }}/electron-vite-app.app
+          retention-days: 7
+
+      - name: Upload dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-app-mac-${{ matrix.arch }}-dmg
+          path: dist/dev/*-${{ matrix.arch }}.dmg
           retention-days: 7
 
   comment:
@@ -74,7 +73,30 @@ jobs:
         with:
           script: |
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const body = `## 🎉 Build Artifacts Ready\n\n| Platform | Download |\n|----------|----------|\n| macOS arm64 | [electron-app-mac-arm64](${runUrl}#artifacts) |\n| macOS x64 | [electron-app-mac-x64](${runUrl}#artifacts) |\n\n> Artifacts expire in 7 days`;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const runId = Number(process.env.GITHUB_RUN_ID);
+
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo,
+              run_id: runId,
+            });
+
+            const byName = new Map(data.artifacts.map((artifact) => [artifact.name, artifact]));
+            const rows = [
+              ["macOS arm64", "app", "electron-app-mac-arm64-app"],
+              ["macOS arm64", "dmg", "electron-app-mac-arm64-dmg"],
+              ["macOS x64", "app", "electron-app-mac-x64-app"],
+              ["macOS x64", "dmg", "electron-app-mac-x64-dmg"],
+            ].map(([platform, kind, name]) => {
+              const artifact = byName.get(name);
+              const url = artifact
+                ? `${runUrl}/artifacts/${artifact.id}`
+                : `${runUrl}#artifacts`;
+              return `| ${platform} | ${kind} | [${name}](${url}) |`;
+            });
+
+            const body = `## 🎉 Build Artifacts Ready\n\n| Platform | Type | Download |\n|----------|------|----------|\n${rows.join("\n")}\n\n> Artifacts expire in 7 days`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
